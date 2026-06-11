@@ -294,6 +294,9 @@ ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 if command -v starship &>/dev/null; then
   eval "$(starship init zsh)"
 fi
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 EOF
 
 echo ""
