@@ -81,6 +81,15 @@ sudo apt install -y zsh-autosuggestions zsh-syntax-highlighting
 echo "✓ Plugins installed"
 
 echo ""
+echo "── tmux (terminal multiplexer) ────────────────────────"
+sudo apt install -y tmux
+TMUX_CONF="$HOME/.tmux.conf"
+if ! grep -qxF 'set -g mouse on' "$TMUX_CONF" 2>/dev/null; then
+  printf '\n# Enable tmux mouse support.\nset -g mouse on\n' >> "$TMUX_CONF"
+fi
+echo "✓ tmux installed with mouse support"
+
+echo ""
 echo "── 8/8  tree + broot ───────────────────────────────────"
 sudo apt install -y tree
 # broot — download latest binary
