@@ -87,6 +87,9 @@ TMUX_CONF="$HOME/.tmux.conf"
 if ! grep -qxF 'set -g mouse on' "$TMUX_CONF" 2>/dev/null; then
   printf '\n# Enable tmux mouse support.\nset -g mouse on\n' >> "$TMUX_CONF"
 fi
+if tmux has-session 2>/dev/null; then
+  tmux set-option -g mouse on
+fi
 echo "✓ tmux installed with mouse support"
 
 echo ""

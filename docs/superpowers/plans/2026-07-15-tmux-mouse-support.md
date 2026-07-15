@@ -4,7 +4,7 @@
 
 **Goal:** Install tmux and ensure each configured user has tmux mouse support enabled without overwriting an existing `~/.tmux.conf`.
 
-**Architecture:** Add a focused tmux section near the existing package-installation steps in `setup_ubuntu.sh`. It installs the Ubuntu package, then uses an exact-line guard before appending the mouse option to the user's tmux configuration. A shell test statically checks the required package command and idempotent configuration block without executing the installer.
+**Architecture:** Add a focused tmux section near the existing package-installation steps in `setup_ubuntu.sh`. It installs the Ubuntu package, uses an exact-line guard before appending the mouse option to the user's tmux configuration, and applies the setting to an already-running tmux server. A shell behavior test extracts only that section and executes it under `bash -e` with temporary `HOME` and `PATH` values plus mocked `sudo`, `apt`, and `tmux` commands.
 
 **Tech Stack:** Bash, APT, GNU grep.
 
@@ -16,32 +16,21 @@
 - Create: `tests/test_tmux_mouse.sh`
 - Test: `tests/test_tmux_mouse.sh`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing behavior test**
 
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
+Extract only the tmux section and execute it with `bash -e` in a temporary `HOME` and `PATH`. Provide mock `sudo`, `apt`, and `tmux` executables so the test does not invoke a real installer or tmux server. Verify that:
 
-script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/setup_ubuntu.sh"
-
-assert_line() {
-  if ! grep -Fqx "$1" "$script_path"; then
-    printf 'Missing expected line: %s\n' "$1" >&2
-    exit 1
-  fi
-}
-
-assert_line 'sudo apt install -y tmux'
-assert_line 'TMUX_CONF="$HOME/.tmux.conf"'
-assert_line "if ! grep -qxF 'set -g mouse on' \"\$TMUX_CONF\" 2>/dev/null; then"
-assert_line "  printf '\\n# Enable tmux mouse support.\\nset -g mouse on\\n' >> \"\$TMUX_CONF\""
-```
+- the mocked `apt` receives exactly `install -y tmux`;
+- two executions create an absent `~/.tmux.conf` and leave exactly one `set -g mouse on` line;
+- an existing `set -g status on` line remains present;
+- an active mocked tmux server receives `set-option -g mouse on`;
+- cleanup uses a trap.
 
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `bash tests/test_tmux_mouse.sh`
 
-Expected: Exit status 1 and `Missing expected line: sudo apt install -y tmux`.
+Expected: Exit status 1 because the active mocked tmux server has not received `set-option -g mouse on`.
 
 ### Task 2: Install and configure tmux
 
@@ -59,6 +48,9 @@ TMUX_CONF="$HOME/.tmux.conf"
 if ! grep -qxF 'set -g mouse on' "$TMUX_CONF" 2>/dev/null; then
   printf '\n# Enable tmux mouse support.\nset -g mouse on\n' >> "$TMUX_CONF"
 fi
+if tmux has-session 2>/dev/null; then
+  tmux set-option -g mouse on
+fi
 echo "✓ tmux installed with mouse support"
 ```
 
@@ -66,7 +58,7 @@ echo "✓ tmux installed with mouse support"
 
 Run: `bash tests/test_tmux_mouse.sh`
 
-Expected: Exit status 0 and no output.
+Expected: Exit status 0 after the mocked package install, append-only configuration behavior, and active-server update are verified.
 
 - [ ] **Step 3: Verify script syntax**
 
@@ -74,9 +66,15 @@ Run: `bash -n setup_ubuntu.sh`
 
 Expected: Exit status 0 and no output.
 
-- [ ] **Step 4: Commit the implementation**
+- [ ] **Step 4: Verify test syntax**
+
+Run: `bash -n tests/test_tmux_mouse.sh`
+
+Expected: Exit status 0 and no output.
+
+- [ ] **Step 5: Commit the implementation**
 
 ```bash
-git add setup_ubuntu.sh tests/test_tmux_mouse.sh docs/superpowers/plans/2026-07-15-tmux-mouse-support.md
-git commit -m "feat: enable tmux mouse support"
+git add setup_ubuntu.sh tests/test_tmux_mouse.sh docs/superpowers/specs/2026-07-15-tmux-mouse-design.md docs/superpowers/plans/2026-07-15-tmux-mouse-support.md
+git commit -m "fix: apply tmux mouse setting to active sessions"
 ```
